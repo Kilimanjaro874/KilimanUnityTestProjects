@@ -48,7 +48,7 @@ public class TicTacToe : MonoBehaviour
 
     struct scan_dir
     {
-        // 駒を置き、その四方八方に同じ駒がいくつ存在するか、走査する方向を定義しておく構造体
+        // 駒を置き、その八方に同じ駒がいくつ存在するか、走査する方向を定義しておく構造体
         public Vector2 _dir1;
         public Vector2 _dir2;
     }
@@ -143,16 +143,14 @@ public class TicTacToe : MonoBehaviour
         // --- 盤面が 〇 or × で三連取っているかの判定結果を返す --- //
         state check_state = state._circle;
         if (turn._crossTurn == tu) { check_state = state._cross; }
-        int sr = s_row;
-        int sc = s_col;
-
+        // -- 八方に走査開始 --
         for (var i = 0; i < _scanDir.GetLength(0); i++)
         {
             // -- 置いた駒が、移動先（Vector2)の駒と揃っているかを再帰的にカウント --
             int count1 = 0;
             int count2 = 0;
-            ScanBoxes(ref cs, ref count1, s_row, s_col, ref check_state, _scanDir[i]._dir1);
-            ScanBoxes(ref cs, ref count2, s_row, s_col, ref check_state, _scanDir[i]._dir2);
+            ScanBoxes(ref cs, ref count1, s_row, s_col, ref check_state, ref _scanDir[i]._dir1);
+            ScanBoxes(ref cs, ref count2, s_row, s_col, ref check_state, ref _scanDir[i]._dir2);
             if (1 + count1 + count2 >= _lineUpNum)    // 自身の駒含めて、_lineUpNum以上並べていればtrue
             {
                 return true;
@@ -162,7 +160,7 @@ public class TicTacToe : MonoBehaviour
         return false;
     }
 
-    private void ScanBoxes(ref cellAndState[,] cs, ref int count, int s_row, int s_col, ref state st, Vector2 dir)
+    private void ScanBoxes(ref cellAndState[,] cs, ref int count, int s_row, int s_col, ref state st, ref Vector2 dir)
     {   // --- 盤面csの状態を走査、再帰的に使用 --- //
         int scan_row = s_row + (int)dir.x;
         int scan_col = s_col + (int)dir.y;
@@ -177,7 +175,7 @@ public class TicTacToe : MonoBehaviour
             if(st == cs[scan_row, scan_col]._state)
             {
                 count++;
-                ScanBoxes(ref cs, ref count, scan_row, scan_col, ref st, dir);
+                ScanBoxes(ref cs, ref count, scan_row, scan_col, ref st, ref dir);
             }
         } else { return;}
     }
