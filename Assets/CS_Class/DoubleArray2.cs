@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class DoubleArray : MonoBehaviour
+public class DoubleArray2 : MonoBehaviour
 {
     [SerializeField]
     private int init_row_ = 5;
@@ -37,7 +37,7 @@ public class DoubleArray : MonoBehaviour
                 var image = obj.AddComponent<Image>();
                 if (r == 0 && c == 0) { image.color = Color.red; }
                 else { image.color = Color.white; }
-                imMap2D_.im2d_[r,c] = image;    // 配列に格納
+                imMap2D_.im2d_[r, c] = image;    // 配列に格納
             }
         }
     }
@@ -49,11 +49,11 @@ public class DoubleArray : MonoBehaviour
         int in_row = 0;
         int in_col = 0;
         if (Input.GetKeyDown(KeyCode.Space)) { Image2D_Erase(ref imMap2D_); }  // 画像削除
-        if (Input.GetKeyDown(KeyCode.RightArrow))   { in_col = 1; };
-        if (Input.GetKeyDown(KeyCode.LeftArrow))    { in_col = -1; };
-        if (Input.GetKeyDown(KeyCode.UpArrow))      { in_row = -1; };
-        if (Input.GetKeyDown(KeyCode.DownArrow))    { in_row = 1; };
-        if(in_row == 0 && in_col == 0) {  return; }     // 操作無し：終了
+        if (Input.GetKeyDown(KeyCode.RightArrow)) { in_col = 1; };
+        if (Input.GetKeyDown(KeyCode.LeftArrow)) { in_col = -1; };
+        if (Input.GetKeyDown(KeyCode.UpArrow)) { in_row = -1; };
+        if (Input.GetKeyDown(KeyCode.DownArrow)) { in_row = 1; };
+        if (in_row == 0 && in_col == 0) { return; }     // 操作無し：終了
         Image2D_Selector(in_row, in_col, ref imMap2D_);
     }
 
@@ -65,49 +65,19 @@ public class DoubleArray : MonoBehaviour
     }
     void Image2D_Selector(int in_row, int in_col, ref ImageMap2D m2d)
     {
-        // ---- ImageMap2Dの選択画像変更：赤くする ---- //
-        bool is_scan_column = false;        // 列走査完了フラグ
         bool is_scan_end_ = false;
-
-        if(in_row != 0)
+        bool is_scan_column = false;
+        // ---- ImageMap2Dの選択画像変更：赤くする ---- //
+        for(var r = 0; r < m2d.im2d_.GetLength(0); r++)
         {
-            // --- 行の走査から --- //
-            for(var r = 0; r < m2d.im2d_.GetLength(0); r++)
+            for(var c = 0; c < m2d.im2d_.GetLength(1); c++)
             {
-                // 選択中の画像を白くする
+                // --- 選択中の画像を白くする --- //
                 if(m2d.im2d_[m2d.s_row_, m2d.s_col_] != null)
                 {
                     m2d.im2d_[m2d.s_row_, m2d.s_col_].color = Color.white;
                 }
-                m2d.s_row_ += in_row;
-                // 行配列上限 or 下限処理：セレクターを配列下限 or 上限に移動
-                if (m2d.s_row_ > m2d.im2d_.GetLength(0) - 1) { m2d.s_row_ = 0; }
-                if (m2d.s_row_ < 0) { m2d.s_row_ = m2d.im2d_.GetLength(0) - 1; }
-                // 参照が有効なら画像を赤くする
-                if (m2d.im2d_[m2d.s_row_, m2d.s_col_] != null)
-                {
-                    m2d.im2d_[m2d.s_row_, m2d.s_col_].color = Color.red;
-                    break;
-                }
-                // 行の画像が全て参照無効の時：列の走査へ移行する
-                if (r >= m2d.im2d_.GetLength(0) - 1)
-                {
-                    is_scan_end_ = true;
-                }
-            }
-        }
-        
-        if(in_col != 0　|| !is_scan_end_)
-        {
-            // --- 列の走査 --- //
-            for(var c = 0; c < m2d.im2d_.GetLength(1); c++)
-            {
-                // 選択中の画像を白くする
-                if (m2d.im2d_[m2d.s_row_, m2d.s_col_] != null)
-                {
-                    m2d.im2d_[m2d.s_row_, m2d.s_col_].color = Color.white;
-                }
-                m2d.s_col_ += in_col;
+                m2d.s_col_ += in_row;
                 // 列配列上限 or 下限処理：セレクターを配列下限 or 上限に移動
                 if (m2d.s_col_ > m2d.im2d_.GetLength(1) - 1) { m2d.s_col_ = 0; }
                 if (m2d.s_col_ < 0) { m2d.s_col_ = m2d.im2d_.GetLength(1) - 1; }
@@ -118,12 +88,39 @@ public class DoubleArray : MonoBehaviour
                     is_scan_column = true;
                     break;
                 }
-                // 列の画像がすべて参照無効の時：
+                // --- 列内に有効な画像が存在しなければ、行を進める --- //
                 if (c >= m2d.im2d_.GetLength(1) - 1)
                 {
-                    is_scan_column = false;
+                    m2d.s_row_++;
                 }
             }
+
+            if (is_scan_column) { return; }
+
+            // 選択中の画像を白くする
+            if (m2d.im2d_[m2d.s_row_, m2d.s_col_] != null)
+            {
+                m2d.im2d_[m2d.s_row_, m2d.s_col_].color = Color.white;
+            }
+            m2d.s_row_ += in_row;
+            // 行配列上限 or 下限処理：セレクターを配列下限 or 上限に移動
+            if (m2d.s_row_ > m2d.im2d_.GetLength(0) - 1) { m2d.s_row_ = 0; }
+            if (m2d.s_row_ < 0) { m2d.s_row_ = m2d.im2d_.GetLength(0) - 1; }
+            // 参照が有効なら画像を赤くする
+            if (m2d.im2d_[m2d.s_row_, m2d.s_col_] != null)
+            {
+                m2d.im2d_[m2d.s_row_, m2d.s_col_].color = Color.red;
+                break;
+            }
+            // 行の画像が全て参照無効の時：列の走査へ移行する
+            if (r >= m2d.im2d_.GetLength(0) - 1)
+            {
+                is_scan_end_ = false;
+            }
+
+
+
+
         }
 
     }
