@@ -5,10 +5,10 @@ public class TicTacToe : MonoBehaviour
 {
     // --- 五目並べ等でも通用するよう、一般性を持たせて開発した --- //
     [SerializeField]
-    private const int _Size = 5;
+    private int _Size = 3;
     //private GameObject[,] _cells;     // 構造体で管理するよう変更
     [SerializeField]
-    private const int _lineUpNum = 4;   // 駒を本変数以上に並べたとき：勝利
+    private int _lineUpNum = 3;   // 駒を本変数以上に並べたとき：勝利
 
     [SerializeField]
     private Color _nomalCell = Color.white;
