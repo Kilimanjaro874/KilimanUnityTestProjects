@@ -12,13 +12,20 @@ public class LightsOuts : MonoBehaviour, IPointerClickHandler
     private Color _on_color = Color.white;
     [SerializeField]
     private Color _off_color = Color.black;
-    GameObject[,] _cellSt;          // Cellゲームオブジェクト格納
     private int _num_of_move = 0;   // 手数を記録
+
+    private struct Cellst
+    {   // Cellst : 参照を構造体で持つ
+        public GameObject _cell;
+        public CellScript _scr;
+        public Image _img;
+    }
+    Cellst[,] _cellSt;
 
     private void Start()
     {
         GetComponent<GridLayoutGroup>().constraintCount = _row;
-        _cellSt = new GameObject[_row, _col];
+        _cellSt = new Cellst[_row, _col];
 
         for (var r = 0; r < _row; r++)
         {
@@ -28,8 +35,10 @@ public class LightsOuts : MonoBehaviour, IPointerClickHandler
                 cell.transform.parent = transform;
                 var col = cell.AddComponent<Image>();
                 var scr = cell.AddComponent<CellScript>();        // Cell用のスクリプトアタッチ
-                // --- Cell管理構造体にオブジェクト代入 --- //
-                _cellSt[r, c] = cell;
+                // --- Cell管理構造体にオブジェクト＆スクリプト代入 --- //
+                _cellSt[r, c]._cell = cell;
+                _cellSt[r, c]._scr = scr;
+                _cellSt[r, c]._img = col;
                 // --- 盤面の初期状態決定 --- //
                 scr.Row = r;                // 行代入
                 scr.Col = c;                // 列代入
@@ -44,6 +53,7 @@ public class LightsOuts : MonoBehaviour, IPointerClickHandler
     public void OnPointerClick(PointerEventData eventData)
     {
         var cell = eventData.pointerCurrentRaycast.gameObject;
+        // --- ゲームオブジェクトがCellスクリプトを持ってるか確認 --- //
         if(cell.gameObject.GetComponent<CellScript>()== null) { return; }
         // --- 手数の記録 --- //
         _num_of_move++;
@@ -80,7 +90,7 @@ public class LightsOuts : MonoBehaviour, IPointerClickHandler
                 if(c == s_col - 1 && r == s_row){ CellLightChange(r, c); }
                 if(c == s_col + 1 && r == s_row){ CellLightChange(r, c); }
                 // --- 駒の状態を確認 --- //
-                if (!_cellSt[r, c].GetComponent<CellScript>().LightOn) { black_num++; }
+                if (!_cellSt[r, c]._scr.LightOn) { black_num++; }
             }
         }
         if(black_num == 0) { return true; }     // Cellが全て白！
@@ -92,10 +102,10 @@ public class LightsOuts : MonoBehaviour, IPointerClickHandler
         // ---- 選択したCellの状態を変化させる ---- //
         if(row > _cellSt.GetLength(0)) { return; }
         if(col > _cellSt.GetLength(1)) { return; }
-        var scr = _cellSt[row, col].GetComponent<CellScript>();
+        var scr = _cellSt[row, col]._scr;
+        var img = _cellSt[row, col]._img;
         scr.LightOn = !scr.LightOn;
-        var image = _cellSt[row, col].GetComponent<Image>();
-        image.color = scr.LightOn ? _on_color : _off_color;     // 画像の色変更 
+        img.color = scr.LightOn ? _on_color : _off_color;     // 画像の色変更 
     }
 
     void RandCellMake()
