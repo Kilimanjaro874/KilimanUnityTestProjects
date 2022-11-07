@@ -124,7 +124,7 @@ public class LightsOuts : MonoBehaviour, IPointerClickHandler
                 //}
             }
         }
-        // --- 一発でクリアできない用に走査を行う --- //
+        // --- 一発でクリアできないように走査を行う --- //
         // 少なくとも、「白が十字で存在する場所が一か所も無い」なら大丈夫
         // その部分があれば、その内1~2箇所黒く塗りつぶす
         for (var r = 0; r < _cellSt.GetLength(0); r++)
