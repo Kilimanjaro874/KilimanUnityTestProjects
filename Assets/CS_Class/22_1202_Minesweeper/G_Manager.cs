@@ -6,7 +6,7 @@ public class G_Manager : MonoBehaviour
     public enum CellState
     {
         // ---- Cell状態定義 ---- //
-        None = 0,
+        None = 0,       //
         One = 1,
         Two = 2,
         Three = 3,
@@ -17,6 +17,15 @@ public class G_Manager : MonoBehaviour
         Eight = 8,
 
         Mine = -1,
+    }
+
+    public enum OptionState
+    {
+        // ---- 旗等の視覚的な状態(クリア等に影響なし)を定義 ---- //
+        None = 0,
+        Flag = 1,
+        Question = 2,
+        End,
     }
 
 }
