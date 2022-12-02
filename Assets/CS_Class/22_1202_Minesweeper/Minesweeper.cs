@@ -131,7 +131,13 @@ public class Minesweeper : MonoBehaviour, IPointerClickHandler
     {
         // ---- 何もないセル隣同士の自動展開 ---- //
         // --- セル自動展開処理 --- //
-        if(cells[row, col].cellState != G_Manager.CellState.None) { return; }
+        if(1 <= (int)cells[row, col].cellState || 8 >= (int) cells[row, col].cellState)
+        {
+            // セルが数字だった場合はそこまでで自動展開ストップ
+            cells[row, col].isOpened = true;
+            cells[row, col].oneFlameActive = true;
+        }
+        if(cells[row, col].cellState != G_Manager.CellState.None) { return; }   // セルが空白：再帰を続ける
         cells[row, col].isOpened = true;
         cells[row, col].oneFlameActive = true;
         // --- 再帰処理 --- //
