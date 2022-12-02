@@ -242,4 +242,17 @@ public class Minesweeper : MonoBehaviour, IPointerClickHandler
         string time = string.Format("{0:00}:{1:00}",min,sec);
         t_text.text = "Time : " + time;
     }
+
+    public void OpenAnswer(){
+        // ----- マインスイーパーの答え表示：ボタンから表示 ----- //
+        for(int r = 0; r < _cells.GetLength(0); r++)
+        {
+            for(int c = 0; c < _cells.GetLength(1); c++)
+            {
+                _cells[r, c].isOpened = true;
+                _cells[r,c].oneFlameActive = true;
+            }
+        }
+        _isToched = true;   // 反映
+    }
 }
