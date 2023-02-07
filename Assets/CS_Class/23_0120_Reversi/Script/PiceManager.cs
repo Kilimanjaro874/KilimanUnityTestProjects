@@ -12,19 +12,28 @@ public class PiceManager : MonoBehaviour
     [SerializeField]
     private Transform PieceGenTransform_;
     [SerializeField]
-    GameObject Piece_;
-
-    private void Start()
+    GameObject Piece_;      // reversi piece;
+    private PiceScript[] piceScripts;
+    
+    public bool GeneratePices()
     {
-        for(var c = 0; c < PieceNum_; c++)
+        if(piceScripts == null)
+        {
+            piceScripts = new PiceScript[PieceNum_];
+        }
+        for (var c = 0; c < PieceNum_; c++)
         {
             var piece = Instantiate(Piece_);
             piece.transform.SetParent(PieceGenTransform_);
-           // piece.transform.position = PieceGenTransform_.position;
-            //Vector3 tmp = PieceGenTransform_.position;
             piece.transform.position = PieceGenTransform_.position + PieceGenTransform_.forward * (float)c * PieceSpan_;
+            var piceScript = piece.GetComponent<PiceScript>();
+            if(piceScript == null) {
+                Debug.Log("null error : piceScript");
+                return false;
+            }
+            piceScripts[c] = piceScript;            
         }
+        return true;
     }
-
 
 }
