@@ -31,7 +31,6 @@ public class BoardManager : MonoBehaviour
     [SerializeField]
     private PiceManager enemyPiceBox_;
   
-
     private void Start()
     {
         cellBoxes_ = new GridBoxScript[grid_col_, grid_row_];
@@ -65,6 +64,9 @@ public class BoardManager : MonoBehaviour
         if(GameState.Init == gameState_)
         {
             // --- set 4 pices --- //
+            var pice1 = playerPiceBox_.PopPiceScript();
+            var box1 = cellBoxes_[3, 3];
+            pice1.pullOutPice(box1.PicePutPos.position, new Vector3(0, 0, 0));
 
             gameState_++;
         }
