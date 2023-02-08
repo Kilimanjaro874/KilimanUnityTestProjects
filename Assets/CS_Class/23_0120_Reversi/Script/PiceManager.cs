@@ -7,25 +7,26 @@ public class PiceManager : MonoBehaviour
 {
     //// ---- Memver variables ---- ////
     // --- Define --- //
-    const int PieceNum_ = 32;
-    const float PieceSpan_ = 0.15f;
+    const int pieceNum_ = 32;
+    int pulledPieceCount = pieceNum_ - 1;
+    const float pieceSpan_ = 0.15f;
     [SerializeField]
-    private Transform PieceGenTransform_;
+    private Transform pieceGenTransform_;
     [SerializeField]
-    GameObject Piece_;      // reversi piece;
+    GameObject piece_;      // reversi piece;
     private PiceScript[] piceScripts;
     
     public bool GeneratePices()
     {
         if(piceScripts == null)
         {
-            piceScripts = new PiceScript[PieceNum_];
+            piceScripts = new PiceScript[pieceNum_];
         }
-        for (var c = 0; c < PieceNum_; c++)
+        for (var c = 0; c < pieceNum_; c++)
         {
-            var piece = Instantiate(Piece_);
-            piece.transform.SetParent(PieceGenTransform_);
-            piece.transform.position = PieceGenTransform_.position + PieceGenTransform_.forward * (float)c * PieceSpan_;
+            var piece = Instantiate(piece_);
+            piece.transform.SetParent(pieceGenTransform_);
+            piece.transform.position = pieceGenTransform_.position + pieceGenTransform_.forward * (float)c * pieceSpan_;
             var piceScript = piece.GetComponent<PiceScript>();
             if(piceScript == null) {
                 Debug.Log("null error : piceScript");
@@ -36,4 +37,17 @@ public class PiceManager : MonoBehaviour
         return true;
     }
 
+    
+    public PiceScript PopPiceScript()
+    {
+        if (pulledPieceCount >= 0)
+        {
+            PiceScript piceS = piceScripts[pulledPieceCount];
+            pulledPieceCount--;
+            return piceS;
+        } else
+        {
+            return null;
+        }
+    }
 }

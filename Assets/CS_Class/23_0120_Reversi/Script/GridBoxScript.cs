@@ -13,4 +13,5 @@ public class GridBoxScript : MonoBehaviour
     public BoardManager.State State { get { return state_; } set { state_ = value; } }
     //// ---- Member functions ---- ////
     
+    
 }

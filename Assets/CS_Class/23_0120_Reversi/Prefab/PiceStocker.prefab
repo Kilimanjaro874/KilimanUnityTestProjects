@@ -295,8 +295,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d424a5b12c516904090c6d673687f395, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PieceGenTransform_: {fileID: 8828172891154841290}
-  Piece_: {fileID: 6749273177445486880, guid: 66313d44ccd719c48a4f034d7197499d, type: 3}
+  pieceGenTransform_: {fileID: 8828172891154841290}
+  piece_: {fileID: 6749273177445486880, guid: 66313d44ccd719c48a4f034d7197499d, type: 3}
 --- !u!1 &8828172891876359555
 GameObject:
   m_ObjectHideFlags: 0
