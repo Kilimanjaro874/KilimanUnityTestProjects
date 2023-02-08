@@ -4,10 +4,9 @@ using UnityEngine;
 
 public class PiceScript : MonoBehaviour
 {
-    //// ---- Memver variables ---- ////
+    //// ---- Member variables ---- ////
     
-    void PickPice()
-    {
 
-    }
+    //// ---- Member functions ---- ////
+    
 }

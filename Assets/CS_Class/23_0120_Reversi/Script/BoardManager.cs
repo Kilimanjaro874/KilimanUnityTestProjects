@@ -31,7 +31,6 @@ public class BoardManager : MonoBehaviour
     [SerializeField]
     private PiceManager enemyPiceBox_;
   
-
     private void Start()
     {
         cellBoxes_ = new GridBoxScript[grid_col_, grid_row_];
