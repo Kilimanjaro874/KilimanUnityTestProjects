@@ -12,6 +12,15 @@ public class GridBoxScript : MonoBehaviour
     private BoardManager.State state_ = BoardManager.State.None;      // set pice state.
     public BoardManager.State State { get { return state_; } set { state_ = value; } }
     //// ---- Member functions ---- ////
-    
-    
+
+
+
+    private void OnTriggerEnter(Collider other)
+    {
+        // valid : PiceScript only
+        var piece = other.GetComponent<PieceScript>();
+        if (!piece) { return; }
+        state_= piece.State;    // get piece state
+    }
+
 }

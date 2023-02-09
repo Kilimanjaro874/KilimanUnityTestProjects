@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 
-public class PiceManager : MonoBehaviour
+public class PieceManager : MonoBehaviour
 {
     //// ---- Memver variables ---- ////
     // --- Define --- //
@@ -14,35 +14,37 @@ public class PiceManager : MonoBehaviour
     private Transform pieceGenTransform_;
     [SerializeField]
     GameObject piece_;      // reversi piece;
-    private PiceScript[] piceScripts;
+    private PieceScript[] piceScripts;
     
-    public bool GeneratePices()
+    public bool GeneratePices(BoardManager.State state)
     {
         if(piceScripts == null)
         {
-            piceScripts = new PiceScript[pieceNum_];
+            piceScripts = new PieceScript[pieceNum_];
         }
         for (var c = 0; c < pieceNum_; c++)
         {
             var piece = Instantiate(piece_);
             piece.transform.SetParent(pieceGenTransform_);
             piece.transform.position = pieceGenTransform_.position + pieceGenTransform_.forward * (float)c * pieceSpan_;
-            var piceScript = piece.GetComponent<PiceScript>();
+            var piceScript = piece.GetComponent<PieceScript>();
+            piceScript.State = state;   // define White / Black
             if(piceScript == null) {
                 Debug.Log("null error : piceScript");
                 return false;
             }
+            
             piceScripts[c] = piceScript;            
         }
         return true;
     }
 
     
-    public PiceScript PopPiceScript()
+    public PieceScript PopPiceScript()
     {
         if (pulledPieceCount >= 0)
         {
-            PiceScript piceS = piceScripts[pulledPieceCount];
+            PieceScript piceS = piceScripts[pulledPieceCount];
             pulledPieceCount--;
             return piceS;
         } else
