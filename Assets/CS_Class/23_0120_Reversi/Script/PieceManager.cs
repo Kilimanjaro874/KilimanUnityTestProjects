@@ -33,13 +33,11 @@ public class PieceManager : MonoBehaviour
                 Debug.Log("null error : piceScript");
                 return false;
             }
-            
             piceScripts[c] = piceScript;            
         }
         return true;
     }
 
-    
     public PieceScript PopPiceScript()
     {
         if (pulledPieceCount >= 0)

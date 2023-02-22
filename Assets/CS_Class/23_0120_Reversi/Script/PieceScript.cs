@@ -8,29 +8,69 @@ public class PieceScript : MonoBehaviour
     //// ---- Member variables ---- ////
     [SerializeField]
     private float move_speed_ = 2.0f;
+    [SerializeField]
     private BoardManager.State state_;
     public BoardManager.State State { get { return state_; } set { state_ = value; } }
     private Vector3 piece_black_rotate_angle_ = new Vector3(180, 0, 0);     // black rotation (deg)
     private Vector3 piece_white_rotate_angle_ = new Vector3(0, 0, 0);       // white rotation (deg)
-
+    private bool IsFlipping_ = false;
+    public bool IsFlipping { get { return IsFlipping_; }  }
     //// ---- Member functions ---- ////
     public void pullOutPice(Vector3 target_pos)
     {
         StartCoroutine(pull(target_pos));
     }
 
+    public void turnPiece()
+    {
+        TurnState();
+        StartCoroutine(turn());
+    }
+
+    public void putPiece(Vector3 target_pos)
+    {
+        StartCoroutine(put(target_pos));
+    }
+
     public IEnumerator pull(Vector3 target_pos)
     {
+        IsFlipping_ = true;
         // move to up : world(0, y, 0)
+        Vector3 move_pos = transform.position + Vector3.up * 2.5f;
+        yield return IEMoveTransform(move_pos, 0.4f);
+        Vector3 rot_ref = (state_ == BoardManager.State.White) ? piece_white_rotate_angle_ : piece_black_rotate_angle_;
+        yield return IEMoveRotateTransform(target_pos, rot_ref, 0.3f);
+        IsFlipping_ = false;
+        yield return null;
+    }
+
+    public IEnumerator put(Vector3 target_pos)
+    {
+        IsFlipping_ = true;
+        Vector3 move_pos = target_pos + Vector3.up * 2.5f;
+        yield return IEMoveTransform(move_pos, 0.3f);
+        yield return IEMoveTransform(target_pos, 0.1f);
+        IsFlipping_ = false;
+        yield return null;
+    }
+
+    public IEnumerator turn()
+    {
+        IsFlipping_ = true;
+        // move tu up : world(0, y, 0)
+        Vector3 current_pos = transform.position;
         Vector3 move_pos = transform.position + Vector3.up * 2.5f;
         Vector3 length = move_pos - transform.position;
         float velocity = length.magnitude;
-        yield return IEMoveTransform(move_pos, 0.4f);
-        Vector3 rot_ref = state_ == BoardManager.State.White ? piece_white_rotate_angle_ : piece_black_rotate_angle_;
-        yield return IEMoveRotateTransform(target_pos, rot_ref, 0.3f);
+        yield return IEMoveTransform(move_pos, 0.2f);
+        Vector3 rot_ref = (state_ == BoardManager.State.White) ? piece_white_rotate_angle_ : piece_black_rotate_angle_;
+        yield return IEMoveRotateTransform(current_pos, rot_ref, 0.2f);
 
+        IsFlipping_ = false;
         yield return null;
     }
+
+    
 
     private IEnumerator IEMoveTransform(Vector3 target_pos, float duration)
     {
@@ -69,5 +109,9 @@ public class PieceScript : MonoBehaviour
         transform.eulerAngles = angle_ref;      // adjustment
     }
 
-
+    public void TurnState()
+    {
+        if(state_ == BoardManager.State.White) { state_= BoardManager.State.Black; }
+        else if(state_ == BoardManager.State.Black) { state_= BoardManager.State.White; }
+    }
 }
