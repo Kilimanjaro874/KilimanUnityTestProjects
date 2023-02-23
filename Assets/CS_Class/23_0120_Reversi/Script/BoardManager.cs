@@ -26,6 +26,7 @@ public class BoardManager : MonoBehaviour, IPointerClickHandler
     private int[,] whiteCanPlacePosAndNumForGameOver_;
     private int[,] blackCanPlacePosAndNumForGameOver_;
 
+
     // --- Objects --- //
     [SerializeField] private GameObject gridBox_;
     [SerializeField] private PieceStocker pieceStockerPlayer_;
@@ -224,7 +225,6 @@ public class BoardManager : MonoBehaviour, IPointerClickHandler
     private bool TurnUpdate(State state)
     {
         // --- put piece --- //
-
         if (!selectedPieceScript_) { return false; }
         if (!selectedGridBoxScript_) { return false; }    // in control : OnPointerClick();
         if (selectedPieceScript_.State != state)
@@ -237,6 +237,27 @@ public class BoardManager : MonoBehaviour, IPointerClickHandler
         selectedGridBoxScript_.PlacedPieceScript = selectedPieceScript_;
         return true;
     }
+
+    private bool EnemyAITurnUpdate(State state)
+    {
+        // --- AI thinking time --- //
+
+
+        // --- put piece --- //
+        if (!selectedPieceScript_) { return false; }
+        if (!selectedGridBoxScript_) { return false; }    // in control : OnPointerClick();
+        if (selectedPieceScript_.State != state)
+        {
+            selectedPieceScript_.State = state;
+            StartCoroutine(PieceTurn(state, selectedPieceScript_));
+        }
+        StartCoroutine(PutPieceToBox(selectedGridBoxScript_.PiecePutPosition.position, selectedPieceScript_));
+        // -- update box info. -- //
+        selectedGridBoxScript_.PlacedPieceScript = selectedPieceScript_;
+
+        return true;
+    }
+
 
     private bool GameOverCheck()
     {
