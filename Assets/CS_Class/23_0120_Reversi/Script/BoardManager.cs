@@ -5,442 +5,601 @@ using TMPro;
 
 public class BoardManager : MonoBehaviour, IPointerClickHandler
 {
-    //// ---- Memver variables ---- ////
+    // ---- Member variables ---- //
     // --- Define --- //
-    const int grid_row_ = 8;
-    const int grid_col_ = 8;
-    const float gridBoxSpan_ = 1.0f;
-    // --- State --- // 
-    enum GameState{
-        None, Init, PlayerTurn, EnemyTurn, GameSet, Result, End,
-    }
-    private GameState gameState_ = GameState.None;
-    
+    const int col_ = 8;
+    const int row_ = 8;
+    const float gridSpan_ = 1.0f;
     public enum State
     {
-        White, Black, None, End,
+        White, Black, None,
     }
-    //State state_ = State.None;
-    // --- Flags --- //
-    bool isPiecePlacementComplete_ = false;
-    bool IsPlayerPutPieceWait_ = false;
-    bool IsEnemyPutPieceWait_ = false;
+    private State[,] boardState_;
+    private State[,] boardStateForGameOverCheck_;
+    public enum GameState
+    {
+        None, PlayerTurn, EnemyTurn, GameSet,
+    }
+    private GameState gameState_ = GameState.None;
+    private int[,] whiteCanPlacePosAndNum_;
+    private int[,] blackCanPlacePosAndNum_;
+    private int[,] whiteCanPlacePosAndNumForGameOver_;
+    private int[,] blackCanPlacePosAndNumForGameOver_;
+
     // --- Objects --- //
-    [SerializeField]
-    private GameObject gridBox_;                    // 1 square on the board.
-    private GridBoxScript[,] cellBoxes_;            // 8x8 -> BoxScript.
-    private GridBoxScript selectedBox_ = null;      // player/enemy choiced box.
-    private PieceScript selectedPiece_ = null;      // player/enemy pulled out piece.
-    private bool[,] isPlayerCanPutPiecePlace_;
-    private bool[,] isEnemyCanPutPiecePlace_;
-    [SerializeField]
-    private PieceManager playerPiceBox_;    // Piece Stocker for player.
-    [SerializeField]
-    private PieceManager enemyPiceBox_;     // Piece Stocker for enemy.
-    [SerializeField]
-    private Transform playerPiceWaitPos_;   // Piece Stock pos for player.
-    [SerializeField]
-    private Transform enemyPiceWaitPos_;    // Piece Stock pos for enemy.
+    [SerializeField] private GameObject gridBox_;
+    [SerializeField] private PieceStocker pieceStockerPlayer_;
+    [SerializeField] private PieceStocker pieceStockerEnemy_;
+    [SerializeField] private Transform playerPieceWaitPos_;
+    [SerializeField] private Transform enemyPieceWaitPos_;
+    private GridBoxScript[,] gridBoxScript_;
+    // --- flags --- //
+    private bool isCoroutineTaskNow_ = false;       // while coroutine task : true;
+    private bool isTurnInit = false;
+    private bool isPiecePlaced = false;
+    private bool isUpdatePermission = false;
+    // --- Selected Objects --- //
+    private PieceScript selectedPieceScript_ = null;
+    private GridBoxScript selectedGridBoxScript_ = null;
     // --- UI --- //
     [SerializeField]
     private TextMeshProUGUI playerTurn_;
     [SerializeField]
     private TextMeshProUGUI enemyTurn_;
-  
+    // -------------------------- //
+
     private void Start()
     {
-        cellBoxes_ = new GridBoxScript[grid_col_, grid_row_];
-        isPlayerCanPutPiecePlace_ = new bool[grid_col_, grid_row_];
-        isEnemyCanPutPiecePlace_ = new bool[grid_col_, grid_row_];
+        // --- create reversi board --- //
+        BoardInit();
+        // --- initialize PieceStocker --- //
+        pieceStockerPlayer_.Init(State.White);
+        pieceStockerEnemy_.Init(State.Black);
+        StartCoroutine(PiecePlaceInit());
+        gameState_ = GameState.PlayerTurn;
         // ---- UI settings ---- //
         playerTurn_.text = "";
         enemyTurn_.text = "";
-        // ---- Create gridBox ---- //
-        // --- get gridBox info. --- //     
-        for(var c = -4; c < grid_col_ - 4; c++)
-        {
-            for(var r = -4; r < grid_row_ - 4; r++)
-            {
-                var cell = Instantiate(gridBox_);
-                cell.transform.SetParent(transform);
-                cell.transform.position = new Vector3(gridBoxSpan_/2 + c * gridBoxSpan_, cell.transform.position.y, gridBoxSpan_/2 + r * gridBoxSpan_);
-                var cellBoxScript = cell.GetComponent<GridBoxScript>();
-                if(cellBoxScript == null) { Debug.Log("null error : cellBoxScript."); }
-                // -- get cellbox script -- //
-                cellBoxes_[c + 4, r + 4] = cellBoxScript;
-                // -- set col & row info. -- //
-                cellBoxScript.SetBoxColAndRow(c + 4, r + 4);
-                // -- reset is-CanPutPiecePlace -- //
-                isPlayerCanPutPiecePlace_[c + 4, r + 4] = false;
-                isEnemyCanPutPiecePlace_[c + 4, r + 4] = false;
-            }   
-        }
-        // ---- Create Pices & set init ---- //
-        if (!playerPiceBox_.GeneratePices(BoardManager.State.White) || !enemyPiceBox_.GeneratePices(BoardManager.State.Black))
-        {
-            Debug.Log("error : Generate Pieces");
-            return;
-        }
-        // ---- State Change ---- //
-        gameState_ = GameState.Init;
-        
     }
 
-    private void Update()
+    private void FixedUpdate()
     {
-        // check game over
+        isUpdatePermission= false;      // use for other func.
+        // --- if coroutine task updating : return --- //
+        if (isCoroutineTaskNow_) { return; }
+        // --- if pieces is moving : return (wait for task to finish) --- //
+        if (pieceStockerPlayer_.IsPiecesMovingCheck() || pieceStockerEnemy_.IsPiecesMovingCheck()) { return; }
+        isUpdatePermission = true;
 
-        if (isPiecePlacementComplete_)
-        {
-            if (IsFlippingCheck()) { return; }
-            if (CheckGameOver()) { 
-                gameState_ = GameState.GameSet;
-            }
-        }
+        // ---- 0. Game over check ---- //
+        if (GameOverCheck()) { gameState_ = GameState.GameSet; }
 
-
-        // --- Initialize --- //
-        if (GameState.Init == gameState_)
-        {
-            StartCoroutine(BoardInit());            // set 4 pieces.
-            gameState_ = GameState.PlayerTurn;
-        }
-
-        // --- Player Turn --- //
+        // ---- 1. Player turn ---- //
         if(GameState.PlayerTurn == gameState_)
         {
-            if (IsFlippingCheck()) { return; }
-           
-
-            if (!isPiecePlacementComplete_) { return; }
-            if (!IsPlayerPutPieceWait_)
+           Debug.Log("player");
+            // --- 1.1. Initialize --- //
+            if (!isTurnInit)
             {
-                // 1. Player turn init. : pull out piece from PieceManager.
-                if (IsFlippingCheck()) { return; }
-                StartCoroutine(WaitInit(playerPiceBox_, playerPiceWaitPos_));   // set piece on wait pos
-                ResetIsCanPutPiecePlace();
-                IsCanPutPiecePlaceUpdate(State.White);
-                if (!IsCanPiecePlaceCheck())
-                {
-                    // check game over
-                    if (CheckGameOver())
-                    {
-                        gameState_ = GameState.GameSet;
-                    }
-                    // not game over -> can't place a piece.
-                    IsEnemyPutPieceWait_ = true;
-                    gameState_ = GameState.EnemyTurn;
+                if (PieceCanBePlacedCheck(State.White, ref whiteCanPlacePosAndNum_))
+                {   // can place a piece : init.
+                    TurnInitialize(playerPieceWaitPos_.position, pieceStockerPlayer_, pieceStockerEnemy_);
+                    isTurnInit = true;
+                } else
+                {   // cann't place a piece 
+                    gameState_ = GameState.EnemyTurn; 
                 }
-                IsPlayerPutPieceWait_ = true;
+                
+                return;
+            }
+            // --- 1.2. update --- //
+            playerTurn_.text = "Player Turn";
+            enemyTurn_.text = "";
+            if (!isPiecePlaced)
+            {
+                if (!TurnUpdate(State.White)) { return; }  // wait : place a piece. (else : return )
+                isPiecePlaced= true;
+                
+                return;
             } else
             {
-
-                // 2. Player turn.
-                // -- UI setting -- //
-                playerTurn_.text = "Player turn";
-                enemyTurn_.text = "";
-                Debug.Log("Player turn.");
-                // -- wait for determination of piece position -- //
-                if (!selectedBox_) { return; }      
-                if (selectedPiece_)
-                {
-                    // 2.1. place a piece
-                    selectedPiece_.State= State.White;
-                    selectedPiece_.putPiece(selectedBox_.PicePutPos.position);
-                    selectedPiece_ = null;
-                }   
-                if (selectedBox_.State != State.None)
-                {
-                    // 2.2. wait for piece placement comp.
-                    FlipPieces(selectedBox_);
-                    selectedBox_ = null;
-                    IsPlayerPutPieceWait_ = false;
-                    IsEnemyPutPieceWait_= false;
-                    gameState_ = GameState.EnemyTurn;
-                }
+                TurnEndAndFlipPieces(State.White);
+                isTurnInit = false;
+                isPiecePlaced = false;
+                gameState_= GameState.EnemyTurn;
+                
+                return;
             }
         }
 
-        // --- Enemy Turn --- //
+        // ---- 2. Enemy turn ---- //
         if(GameState.EnemyTurn == gameState_)
         {
-            if (IsFlippingCheck()) { return; }
-            
             Debug.Log("enemy turn");
-            if (!isPiecePlacementComplete_) { return; }
-            if (!IsEnemyPutPieceWait_)
+            // --- 2.1. Initialize --- //
+            if (!isTurnInit)
             {
-                // 1. Player turn init. : pull out piece from PieceManager.
-                if (IsFlippingCheck()) { return; }
-                StartCoroutine(WaitInit(enemyPiceBox_, enemyPiceWaitPos_));   // set piece on wait pos
-                ResetIsCanPutPiecePlace();
-                IsCanPutPiecePlaceUpdate(State.Black);
-                if (!IsCanPiecePlaceCheck())
+                if(PieceCanBePlacedCheck(State.Black, ref blackCanPlacePosAndNum_))
+                {   // can place a piece : init.
+                    TurnInitialize(enemyPieceWaitPos_.position, pieceStockerEnemy_, pieceStockerPlayer_);
+                    isTurnInit = true;
+                } else
                 {
-                    // check game over
-                    if (CheckGameOver())
-                    {
-                        gameState_ = GameState.GameSet;
-                    }
-                    // can't place a piece.
-
-                    IsEnemyPutPieceWait_ = true;
                     gameState_ = GameState.PlayerTurn;
                 }
-                IsEnemyPutPieceWait_ = true;
+                return;
             }
-            else
+            // --- 2.2. update --- //
+            playerTurn_.text = "";
+            enemyTurn_.text = "Enemy Turn";
+            if (!isPiecePlaced)
             {
-                // 2. Player turn.
-                // -- UI setting -- //
-                playerTurn_.text = "";
-                enemyTurn_.text = "Enemy turn";
-                
-                // -- wait for determination of piece position -- //
-                if (!selectedBox_) { return; }
-                if (selectedPiece_)
-                {
-                    // 2.1. place a piece
-                    selectedPiece_.State = State.Black;
-                    selectedPiece_.putPiece(selectedBox_.PicePutPos.position);
-                    selectedPiece_ = null;
-                }
-                if (selectedBox_.State != State.None)
-                {
-                    // 2.2. wait for piece placement comp.
-                    FlipPieces(selectedBox_);
-                    selectedBox_ = null;
-                    IsEnemyPutPieceWait_= false;
-                    IsPlayerPutPieceWait_ = false;
-                    gameState_ = GameState.PlayerTurn;
-                }
-            }
-        }
+                if (!TurnUpdate(State.Black)) { return; }   // wait : place a piece. (else : return )
+                isPiecePlaced = true;
 
-        // --- Game Over --- //
-        if(GameState.GameSet == gameState_)
-        {
-            Debug.Log("End Game");
-        }
-    }
-
-    public void OnPointerClick(PointerEventData eventData)
-    {
-         
-        //if(GameState.PlayerTurn != gameState_) { return; }
-        if (IsFlippingCheck()) { return; }
-        if(eventData.button == PointerEventData.InputButton.Left) {
-            var box = eventData.pointerCurrentRaycast.gameObject;
-            var boxScript = box.GetComponent<GridBoxScript>();
-            if (!boxScript) { return; }
-            var choicedBox = boxScript;
-            if (!choicedBox.IsCanPlacePiece) {
-                Debug.Log("Can't place!");
-                return; 
-            }
-            selectedBox_ = choicedBox;      // Determining the placement box.
-        }
-    }
-
-    private void IsCanPutPiecePlaceUpdate(State state)
-    {
-        for(var c = 0; c < cellBoxes_.GetLength(0); c++)
-        {
-            for(var r = 0; r < cellBoxes_.GetLength(1); r++)
+                return;
+            } else
             {
-                var cellBox = cellBoxes_[c, r];
-                if (!cellBox) continue;
-                if (cellBox.State != BoardManager.State.None) { continue; }     // already exists : ignore
-                // check
-                if (PiecePlaceRecursiveCheck(state, c, r, -1, -1, 0)) {  }
-                if (PiecePlaceRecursiveCheck(state, c, r, 0, -1, 0 )) {  }
-                if (PiecePlaceRecursiveCheck(state, c, r, 1, -1, 0 )) {  }
+                TurnEndAndFlipPieces(State.Black);
+                isTurnInit = false;
+                isPiecePlaced = false;
+                gameState_ = GameState.PlayerTurn;
 
-                if (PiecePlaceRecursiveCheck(state, c, r, -1, 0, 0)) {  }
-                //if (PiecePlaceRecursiveCheck(state, c, r, 0, 0, 0)) { cellBox.IsCanPlacePiece = true; }
-                if(c == 3 && r == 1)
-                {
-                    Debug.Log("deb");
-                }
-                if (PiecePlaceRecursiveCheck(state, c, r, 1, 0, 0)) { }
-
-                if (PiecePlaceRecursiveCheck(state, c, r, -1, 1, 0)) {  }
-                if (PiecePlaceRecursiveCheck(state, c, r, 0, 1, 0)) {  }
-                if (PiecePlaceRecursiveCheck(state, c, r, 1, 1, 0)) {  }
+                return;
             }
         }
-    }
 
-    private bool IsCanPiecePlaceCheck()
-    {
-        for (var c = 0; c < cellBoxes_.GetLength(0); c++)
+        // ---- 3. GameOver ---- //
+        if(GameState.GameSet== gameState_)
         {
-            for (var r = 0; r < cellBoxes_.GetLength(1); r++)
+            Debug.Log("Game over");
+            int whiteNum, blackNum;
+            Result(out whiteNum, out blackNum);
+            if(whiteNum > blackNum)
             {
-                var cellBox = cellBoxes_[c, r];
-                if (cellBox.IsCanPlacePiece)
-                {
-                    return true;
-                }
+                playerTurn_.text = "Player Win!\n" + "Piece Num\n => " + whiteNum.ToString();
+                enemyTurn_.text = "Loose...\n" + "Piece Num\n => " + blackNum.ToString();
+            }
+            if(blackNum > whiteNum)
+            {
+                playerTurn_.text = "Loose...\n" + "Piece Num\n => " + whiteNum.ToString();
+                enemyTurn_.text = "Enemy Win!\n" + "Piece Num\n => " + blackNum.ToString(); 
+            }
+            if(blackNum == whiteNum)
+            {
+                playerTurn_.text = "Draw...\n" + "Piece Num\n => " + whiteNum.ToString(); 
+                enemyTurn_.text = "Draw...\n" + "Piece Num\n => " + blackNum.ToString(); 
             }
         }
-        return false;
     }
 
-    private void ResetIsCanPutPiecePlace()
+    // -------------------------- //
+    // ---- Member functions ---- //
+    private void BoardInit()
     {
-        for(var c = 0; c < cellBoxes_.GetLength(0); c++)
+        // --- init object state --- //
+        gridBoxScript_ = new GridBoxScript[col_, row_];
+        // --- init array state --- //
+        boardState_ = new State[col_, row_];
+        boardStateForGameOverCheck_ = new State[col_, row_];
+        whiteCanPlacePosAndNum_= new int[col_, row_];
+        blackCanPlacePosAndNum_= new int[col_, row_];
+        whiteCanPlacePosAndNumForGameOver_= new int[col_, row_];
+        blackCanPlacePosAndNumForGameOver_= new int[col_, row_];
+        // --- create reversi board --- //
+        for (var c = -4; c < col_ - 4; c++)
         {
-            for(var r = 0; r < cellBoxes_.GetLength(1); r++)
+            for (var r = -4; r < row_ - 4; r++)
             {
-                var cellBox = cellBoxes_[c, r];
-                cellBox.IsCanPlacePiece = false;
+                var box = Instantiate(gridBox_);
+                box.transform.SetParent(transform);
+                box.transform.position = new Vector3(gridSpan_ / 2 + c * gridSpan_,
+                    box.transform.position.y,
+                    gridSpan_ / 2 + r * gridSpan_
+                    );
+                var boxScript = box.GetComponent<GridBoxScript>();
+                if (!boxScript) { Debug.Log("error : null of GridBoxScript"); return; }
+                // -- get boxScript info. -- //
+                gridBoxScript_[c + 4, r + 4] = boxScript;
+                // -- set boxScript info. -- //
+                boxScript.SetColAndRow(c + 4, r + 4);
             }
         }
     }
 
-    private bool IsFlippingCheck()
+    private void TurnInitialize(Vector3 WaitPos, PieceStocker stocker, PieceStocker otherStocker)
     {
-
-        for (var c = 0; c < cellBoxes_.GetLength(0); c++)
+        // --- pull out piece, put piece --- //
+        StartCoroutine(PullOutPieceToWaitPos(WaitPos, stocker, otherStocker));
+        // --- permit : box Highlight --- //
+        for (var c = 0; c < col_; c++)
         {
-            for (var r = 0; r < cellBoxes_.GetLength(1); r++)
+            for (var r = 0; r < row_; r++)
             {
-                var cellBox = cellBoxes_[c, r];
-                if(cellBox.PlacedPieceScript!= null)
-                {
-                    var pice = cellBox.PlacedPieceScript;
-                    if (pice.IsFlipping)
-                    {
-                        return true;
-                    }
-                }
+                gridBoxScript_[c, r].IsHilightPermit= true;
             }
         }
-        return false;
     }
 
-    private bool PiecePlaceRecursiveCheck(State state, int current_col, int current_row, int dirC, int dirR, int count)
+    private bool TurnUpdate(State state)
     {
-        if (count < 0 || count > grid_row_ - 1) { return false; }
-        var currentDirC = (dirC >= 0) ? dirC * (count + 1) : (int)(-1 * Mathf.Abs(dirC) * (count + 1));
-        var currentDirR = (dirR >= 0) ? dirR * (count + 1) : (int)(-1 * Mathf.Abs(dirR) * (count + 1));
-        var tmpC = current_col + currentDirC;
-        var tmpR = current_row + currentDirR;
-        if (tmpC < 0 || tmpC >= cellBoxes_.GetLength(0)) { return false; }
-        if (tmpR < 0 || tmpR >= cellBoxes_.GetLength(1)) { return false; }
-        var cellBox = cellBoxes_[tmpC, tmpR];
-        if (count == 0 && cellBox.State == State.None) { return false; }
-        if (count != 0 && cellBox.State == state) {
-            var currentBox = cellBoxes_[current_col, current_row];
-            currentBox.IsCanPlacePiece = true;
-            return true;
+        // --- put piece --- //
+
+        if (!selectedPieceScript_) { return false; }
+        if (!selectedGridBoxScript_) { return false; }    // in control : OnPointerClick();
+        if (selectedPieceScript_.State != state)
+        {
+            selectedPieceScript_.State = state;
+            StartCoroutine(PieceTurn(state, selectedPieceScript_));
         }
-        var invState = (state == State.White) ? State.Black : State.White;
-        if (cellBox.State == invState) {
-            count++;
-            PiecePlaceRecursiveCheck(state, current_col, current_row, dirC, dirR, count);
+        StartCoroutine(PutPieceToBox(selectedGridBoxScript_.PiecePutPosition.position, selectedPieceScript_));
+        // -- update box info. -- //
+        selectedGridBoxScript_.PlacedPieceScript = selectedPieceScript_;
+        return true;
+    }
+
+    private bool GameOverCheck()
+    {
+        if (PieceCanBePlacedCheckForGameOverCheck(State.White, ref whiteCanPlacePosAndNumForGameOver_)) { return false; }
+        if (PieceCanBePlacedCheckForGameOverCheck(State.Black, ref blackCanPlacePosAndNumForGameOver_)) { return false; }
+        return true;
+    }
+
+    private void Result(out int whiteNum, out int blackNum)
+    {
+        // --- get whitePiece num & BlackPiece num --- //
+        int white = 0;
+        int black = 0;
+        for(var c = 0; c < col_; c++)
+        {
+            for(var r = 0; r < row_; r++)
+            {
+                var boxScript = gridBoxScript_[c, r];
+                var pieceScript = boxScript.PlacedPieceScript;
+                if (!pieceScript) { continue; }
+                if (pieceScript.State == State.White) { white ++; }
+                if (pieceScript.State == State.Black) { black ++; }
+            }
         }
-        return false;
+        whiteNum = white; 
+        blackNum = black;
     }
 
-    private IEnumerator BoardInit()
+    private void TurnEndAndFlipPieces(State state)
     {
-        isPiecePlacementComplete_= false;
-        var piece1 = playerPiceBox_.PopPiceScript();
-        var box1 = cellBoxes_[3, 3];
-        yield return piece1.pull(box1.PicePutPos.position);
-        var piece2 = enemyPiceBox_.PopPiceScript();
-        var box2 = cellBoxes_[3, 4];
-        yield return piece2.pull(box2.PicePutPos.position);
-        var piece3 = playerPiceBox_.PopPiceScript();
-        var box3 = cellBoxes_[4, 4];
-        yield return piece3.pull(box3.PicePutPos.position);
-        var piece4 = enemyPiceBox_.PopPiceScript();
-        var box4 = cellBoxes_[4, 3];
-        yield return piece4.pull(box4.PicePutPos.position);
-        isPiecePlacementComplete_ = true;
-    }
-
-    private void FlipPieces(GridBoxScript boxScript)
-    {
+        // --- prohibit : box Highlight --- //
+        for (var c = 0; c < col_; c++)
+        {
+            for (var r = 0; r < row_; r++)
+            {
+                gridBoxScript_[c, r].IsHilightPermit = false;
+            }
+        }
+        // --- turn Pieces --- //
         int col, row;
-        boxScript.GetBoxColAndRow(out col, out row);
-
-
-        FlipPiecesRecursive(boxScript.State, col, row, -1, -1);
-        FlipPiecesRecursive(boxScript.State, col, row, 0, -1);
-        FlipPiecesRecursive(boxScript.State, col, row, 1, -1);
-        FlipPiecesRecursive(boxScript.State, col, row, -1, 0);
-        //FlipPiecesRecursive(boxScript.State, col, row, 0, 0);
-        FlipPiecesRecursive(boxScript.State, col, row, 1, 0);
-        FlipPiecesRecursive(boxScript.State, col, row, -1, 1);
-        FlipPiecesRecursive(boxScript.State, col, row, 0, 1);
-        FlipPiecesRecursive(boxScript.State, col, row, 1, 1);
+        selectedGridBoxScript_.GetColAndRow(out col, out row);
+        FlipPiecesRecursive(state, col, row, -1, -1);
+        FlipPiecesRecursive(state, col, row, -0, -1);
+        FlipPiecesRecursive(state, col, row, 1, -1);
+        FlipPiecesRecursive(state, col, row, -1, 0);
+        //FlipPiecesRecursive(state, col, row, 0, 0);
+        FlipPiecesRecursive(state, col, row, 1, 0);
+        FlipPiecesRecursive(state, col, row, -1, 1);
+        FlipPiecesRecursive(state, col, row, 0, 1);
+        FlipPiecesRecursive(state, col, row, 1, 1);
+        // --- fold flags --- //
+        selectedPieceScript_ = null;
+        selectedGridBoxScript_= null;
     }
 
-    private bool FlipPiecesRecursive(State state, int current_col, int current_row, int dirC, int dirR)
+    private void FlipPiecesRecursive(State state, int col, int row, int dirC, int dirR)
     {
-        var tmpC = current_col + dirC;
-        var tmpR = current_row + dirR;
-        var invState = (state == State.White) ? State.Black : State.White;
-        while (0 <= tmpC && tmpC < cellBoxes_.GetLength(0) && 0 <= tmpR && tmpR < cellBoxes_.GetLength(1))
+        var tmpC = col + dirC;
+        var tmpR = row + dirR;
+        //var eState = (state == State.White) ? State.Black : State.White;
+        while (0 <= tmpC && tmpC < col_ && 0 <= tmpR && tmpR < row_)
         {
-            var boxScript = cellBoxes_[tmpC, tmpR];
-            if (boxScript.State == state) { break; }
-            if (boxScript.State == State.None) { return false; }
-            tmpC += dirC;
-            tmpR += dirR;
-        }
+            var boxScript = gridBoxScript_[tmpC, tmpR];
+            var piceScript = boxScript.PlacedPieceScript;
 
-        if(0 <= tmpC && tmpC < cellBoxes_.GetLength(0) && 0 <= tmpR && tmpR < cellBoxes_.GetLength(1))
+            // --- 1. check : piece exist --- //
+            if (!piceScript) { return; }         
+            // --- 2. check : different color --- //
+            if(piceScript.State == state) { break; }
+            tmpC += dirC;       // advance the scan.
+            tmpR += dirR;       // 
+        }
+        // -- 3. check : in an array -- //
+        if(0 <= tmpC && tmpC < col_ && 0 <= tmpR && tmpR < row_)
         {
-            while(tmpC != current_col || tmpR != current_row)
+            // -- 4. scan returning & turn pieces -- //
+            while(tmpC != col || tmpR != row)
             {
                 tmpC -= dirC;
                 tmpR -= dirR;
-                var boxScript = cellBoxes_[tmpC, tmpR];
-                if (tmpC != current_col || tmpR != current_row)
+                var boxScript = gridBoxScript_[tmpC, tmpR];
+                var pieceScript = boxScript.PlacedPieceScript;
+                // -- turn -- //
+                if (tmpC != col || tmpR != row)
                 {
-                    boxScript.TurnPiece();
+                    pieceScript.State = state;
+                    StartCoroutine(PieceTurnNormal(state, pieceScript));
                 }
             }
         }
-        return true;
-       
     }
 
-    private bool CheckGameOver()
+    private bool PieceCanBePlacedCheck(State state, ref int[,] CanPlacePosAndNum)
     {
-        int noneCount = 0;
-        int whiteCount = 0;
-        int blackCount = 0;
-        for (var c = 0; c < cellBoxes_.GetLength(0); c++)
+        // --- 1. init array status & info. update --- //
+        for(var c = 0; c < col_; c++)
         {
-            for (var r = 0; r < cellBoxes_.GetLength(1); r++)
+            for(var r = 0; r < row_; r++)
             {
-                var boxScript = cellBoxes_[c, r];
-                if(boxScript.State == State.None) { noneCount++; }
-                if(boxScript.State == State.White) { whiteCount++; }
-                if(boxScript.State == State.Black) { blackCount++; }
+                // -- init -- //
+                CanPlacePosAndNum[c, r] = 0;
+                // -- update -- //
+                var box = gridBoxScript_[c, r];
+                if (box.PlacedPieceScript)
+                {
+                    // -- have a piece : cann't place a piece  -- //
+                    var piece = box.PlacedPieceScript;
+                    boardState_[c, r] = (piece.State == State.White) ? State.White : State.Black;
+                } else
+                {
+                    // -- don't have a piece  : possibility to place piece -- //
+                    boardState_[c, r] = State.None;
+                }
             }
         }
-        if(noneCount== 0) { return true; }
-        if(whiteCount==0) { return true; }
-        if(blackCount==0) { return true; }
+        // --- 2. check : possibility to place piece & get enemy piece num --- //
+        for(var c = 0; c < col_; c++)
+        {
+            for(var r = 0; r < row_; r++)
+            {
+                if (boardState_[c,r] != State.None) { continue; }   // cann't place 
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNum(state, c, r, -1, -1, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNum(state, c, r, 0, -1, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNum(state, c, r, 1, -1, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNum(state, c, r, -1, 0, 0);
+                //CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNum(state, c, r, 0, 0, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNum(state, c, r, 1, 0, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNum(state, c, r, -1, 1, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNum(state, c, r, 0, 1, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNum(state, c, r, 1, 1, 0);
+            }
+        }
+        // --- 3. check : can place piece ? --- //
+        int canPlacePosNum = 0;
+        for (var c = 0; c < col_; c++)
+        {
+            for(var r = 0; r < row_; r++)
+            {
+                var boxScript = gridBoxScript_[c, r];
+                if (CanPlacePosAndNum[c, r] != 0)
+                {
+                    canPlacePosNum++;
+                    // -- flag change : GridBoxScript -- //
+                    boxScript.IsCanPiecePlace = true;
+                } else
+                {
+                    // -- flag change : GridBoxScript -- //
+                    boxScript.IsCanPiecePlace = false;
+                }
+            }
+        }
+        if(canPlacePosNum > 0) { return true; }
+
         return false;
     }
 
-
-    private IEnumerator WaitInit(PieceManager pieceMgr, Transform waitPos)
+    private bool PieceCanBePlacedCheckForGameOverCheck(State state, ref int[,] CanPlacePosAndNum)
     {
-        isPiecePlacementComplete_ = false;
-        var piece = pieceMgr.PopPiceScript();
+        // --- 1. init array status & info. update --- //
+        for (var c = 0; c < col_; c++)
+        {
+            for (var r = 0; r < row_; r++)
+            {
+                // -- init -- //
+                CanPlacePosAndNum[c, r] = 0;
+                // -- update -- //
+                var box = gridBoxScript_[c, r];
+                if (box.PlacedPieceScript)
+                {
+                    // -- have a piece : cann't place a piece  -- //
+                    var piece = box.PlacedPieceScript;
+                    boardStateForGameOverCheck_[c, r] = (piece.State == State.White) ? State.White : State.Black;
+                }
+                else
+                {
+                    // -- don't have a piece  : possibility to place piece -- //
+                    boardStateForGameOverCheck_[c, r] = State.None;
+                }
+            }
+        }
+        // --- 2. check : possibility to place piece & get enemy piece num --- //
+        for (var c = 0; c < col_; c++)
+        {
+            for (var r = 0; r < row_; r++)
+            {
+                if (boardStateForGameOverCheck_[c, r] != State.None) { continue; }   // cann't place 
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNumForGameOverCheck(state, c, r, -1, -1, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNumForGameOverCheck(state, c, r, 0, -1, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNumForGameOverCheck(state, c, r, 1, -1, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNumForGameOverCheck(state, c, r, -1, 0, 0);
+                //CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNumForGameOverCheck(state, c, r, 0, 0, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNumForGameOverCheck(state, c, r, 1, 0, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNumForGameOverCheck(state, c, r, -1, 1, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNumForGameOverCheck(state, c, r, 0, 1, 0);
+                CanPlacePosAndNum[c, r] += PieceCanBePlacedCheckAndGetNumForGameOverCheck(state, c, r, 1, 1, 0);
+            }
+        }
+        // --- 3. check : can place piece ? --- //
+        int canPlacePosNum = 0;
+        for (var c = 0; c < col_; c++)
+        {
+            for (var r = 0; r < row_; r++)
+            {
+                var boxScript = gridBoxScript_[c, r];
+                if (CanPlacePosAndNum[c, r] != 0)
+                {
+                    canPlacePosNum++;
+                    // -- flag change : GridBoxScript -- //
+                    //boxScript.IsCanPiecePlace = true;
+                }
+                else
+                {
+                    // -- flag change : GridBoxScript -- //
+                    //boxScript.IsCanPiecePlace = false;
+                }
+            }
+        }
+        if (canPlacePosNum > 0) { return true; }
+
+        return false;
+    }
+
+    private int PieceCanBePlacedCheckAndGetNum(State state, int col, int row, int dirC, int dirR, int count)
+    {
+        var cDirC = (dirC >= 0) ? dirC * (count + 1) : (int)(-1 * Mathf.Abs(dirC) * (count + 1));
+        var cDirR = (dirR >= 0) ? dirR * (count + 1) : (int)(-1 * Mathf.Abs(dirR) * (count + 1));
+        var tmpC = col + cDirC;
+        var tmpR = row + cDirR;
+        if (tmpC < 0 || tmpC >= col_ || tmpR < 0 || tmpR >= row_) { return 0; }
+        State cState = boardState_[tmpC, tmpR];
+        // 0. missing piece. : end.
+        if (count == 0 && cState == State.None) { return 0; }
+        // 1. enemy piece exists. : continue.
+        State eState = (state == State.White) ? State.Black : State.White;
+        if(cState == eState)
+        {
+            count++;
+            return PieceCanBePlacedCheckAndGetNum(state, col, row, dirC, dirR, count);
+        }
+        // 2. reached state piece. : retun num of capture enemy piece.
+        if(count > 0 && cState == state)
+        {
+            return (count);
+        }
+        return 0;
+    }
+
+    private int PieceCanBePlacedCheckAndGetNumForGameOverCheck(State state, int col, int row, int dirC, int dirR, int count)
+    {
+        var cDirC = (dirC >= 0) ? dirC * (count + 1) : (int)(-1 * Mathf.Abs(dirC) * (count + 1));
+        var cDirR = (dirR >= 0) ? dirR * (count + 1) : (int)(-1 * Mathf.Abs(dirR) * (count + 1));
+        var tmpC = col + cDirC;
+        var tmpR = row + cDirR;
+        if (tmpC < 0 || tmpC >= col_ || tmpR < 0 || tmpR >= row_) { return 0; }
+        State cState = boardStateForGameOverCheck_[tmpC, tmpR];
+        // 0. missing piece. : end.
+        if (count == 0 && cState == State.None) { return 0; }
+        // 1. enemy piece exists. : continue.
+        State eState = (state == State.White) ? State.Black : State.White;
+        if (cState == eState)
+        {
+            count++;
+            return PieceCanBePlacedCheckAndGetNumForGameOverCheck(state, col, row, dirC, dirR, count);
+        }
+        // 2. reached state piece. : retun num of capture enemy piece.
+        if (count > 0 && cState == state)
+        {
+            return (count);
+        }
+        return 0;
+    }
+
+    // ----------------- //
+    // --- Coroutine --- //
+    private IEnumerator PiecePlaceInit()
+    {
+        // --- set 4 pieces --- //
+        isCoroutineTaskNow_ = true;
+        var p1 = pieceStockerPlayer_.PopPiece();
+        var b1 = gridBoxScript_[3, 3];
+        yield return p1.pull(b1.PiecePutPosition.position);
+        var p2 = pieceStockerEnemy_.PopPiece();
+        var b2 = gridBoxScript_[3, 4];
+        yield return p2.pull(b2.PiecePutPosition.position);
+        var p3 = pieceStockerPlayer_.PopPiece();
+        var b3 = gridBoxScript_[4, 4];
+        yield return p3.pull(b3.PiecePutPosition.position);
+        var p4 = pieceStockerEnemy_.PopPiece();
+        var b4 = gridBoxScript_[4, 3];
+        yield return p4.pull(b4.PiecePutPosition.position);
+        isCoroutineTaskNow_ = false;
+        
+        yield return null;
+    }
+
+    private IEnumerator PullOutPieceToWaitPos(Vector3 WaitPos, PieceStocker stocker, PieceStocker otherStocker)
+    {
+        // --- Pice pullout from PieceStocker & move to wait position --- //
+        isCoroutineTaskNow_ = true;
+        var piece = stocker.PopPiece();
+        if (!piece)
+        {
+            // if player / enemy Stocker is void : get from other Stocker.
+            piece = otherStocker.PopPiece();
+            if(!piece) { yield return null; }
+        }
         if (piece)
         {
-            yield return piece.pull(waitPos.position);
-            selectedPiece_ = piece;
-            isPiecePlacementComplete_ = true;
+            yield return piece.pull(WaitPos);
+            selectedPieceScript_ = piece;
         }
+        isCoroutineTaskNow_ = false;
+
+        yield return null;
     }
+
+    private IEnumerator PutPieceToBox(Vector3 putPos, PieceScript piece)
+    {
+        isCoroutineTaskNow_ = true;
+        yield return piece.put(putPos);
+        isCoroutineTaskNow_ = false;
+
+        yield return null;
+    }
+
+    private IEnumerator PieceTurn(State state, PieceScript piece)
+    {
+        isCoroutineTaskNow_ = true;
+        yield return piece.turnPieceInCurrentPos(state);
+        isCoroutineTaskNow_ = false;
+
+        yield return null;
+    }
+
+    private IEnumerator PieceTurnNormal(State state, PieceScript piece)
+    {
+        isCoroutineTaskNow_= true;
+        yield return piece.turnPiece(state);
+        isCoroutineTaskNow_ = false;
+
+        yield return null;
+    }
+
+    // ---------------------------- //
+    // --- IPointerClickHandler --- //
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        // --- select a box -> status update --- //
+        if (!isUpdatePermission) { return; }
+        if (gameState_ != GameState.PlayerTurn && gameState_ != GameState.EnemyTurn) { return; }
+        if (eventData.button == PointerEventData.InputButton.Left)
+        {
+            var box = eventData.pointerCurrentRaycast.gameObject;
+            var boxScript = box.GetComponent<GridBoxScript>();
+            if (!boxScript) { return; }
+            if (!boxScript.IsCanPiecePlace)
+            {
+                Debug.Log("Cann't place!");
+                return;
+            }
+            selectedGridBoxScript_ = boxScript;
+        }
+
+    }
+
 }

@@ -2,68 +2,69 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting.FullSerializer;
 using UnityEngine;
+using static BoardManager;
+using UnityEngine.EventSystems;
 
-public class GridBoxScript : MonoBehaviour
+public class GridBoxScript : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
-    //// ---- Memver variables ---- ////
-    [SerializeField]
-    private Transform picePutPos_;
-    public Transform PicePutPos { get { return picePutPos_; } }
-    [SerializeField]
-    private BoardManager.State state_ = BoardManager.State.None;      // set pice state.
-    public BoardManager.State State { get { return state_; } set { state_ = value; } }
-    [SerializeField]
-    private bool isCanPlacePiece_ = false;   // judge: can place white.
-    [SerializeField]
-    private GameObject Ball;
-    // check: can place a piece.
-    public bool IsCanPlacePiece { get { return isCanPlacePiece_; } set { isCanPlacePiece_ = value; } }
-    // box column & row
-    private int column_;
+    // ---- Member variables ---- //
+    // --- Define --- //
+    // --- Objects --- //
+    [SerializeField] private Transform piecePutPosition_;
+    public Transform PiecePutPosition { get { return piecePutPosition_; } }
+    [SerializeField] GameObject target_;                       // isCanPiecePlace_= true : appear.
+    [SerializeField] GameObject hilight_;                      // if on mouse ray = true : appera.
+    private PieceScript placedPieceScript_ = null;             // get : placed piece script.
+    public PieceScript PlacedPieceScript { get { return placedPieceScript_; } set { placedPieceScript_ = value; } }
+    // --- flags --- //
+    [SerializeField] private bool isCanPiecePlace_ = false;
+    public bool IsCanPiecePlace { get { return isCanPiecePlace_; } set { isCanPiecePlace_ = value; } }
+    [SerializeField] private bool isHilighPermit_ = true;
+    public bool IsHilightPermit { get { return isHilighPermit_; } set { isHilighPermit_ = value; } }
+    // --- Nums --- //
+    private int col_;
     private int row_;
-    // Placed piece script 
-    private PieceScript placed_piece_script_= null;
-    public PieceScript PlacedPieceScript { get { return placed_piece_script_; } }
 
-    private void Update()
+    private void Start()
     {
-        if (isCanPlacePiece_)
+        // ---- Initialize ---- //
+        hilight_.SetActive(false);
+        isCanPiecePlace_ = false;
+        isHilighPermit_ = false;
+    }
+
+    // ---- Member functions ---- //
+    public void SetColAndRow(int col, int row) { col_ = col; row_ = row; }
+    public void GetColAndRow(out int col, out int row) { col = col_; row = row_; }
+    private void FixedUpdate()
+    {
+        if (isCanPiecePlace_)
         {
-            Ball.SetActive(true);
+            target_.SetActive(true);
         } else
         {
-            Ball.SetActive(false);
+            target_.SetActive(false);
         }
     }
 
-    //// ---- Member functions ---- ////
+    // --- Collider --- //
     private void OnTriggerEnter(Collider other)
     {
-        // valid : PiceScript only
+        // --- Get piece information --- //
         var piece = other.GetComponent<PieceScript>();
-        if (!piece) { return; }
-        state_= piece.State;            // get piece state.
-        placed_piece_script_ = piece;   // get piece script.
+        if(!piece) { return; }
+        placedPieceScript_ = piece;     // get piece info.
     }
 
-    public void SetBoxColAndRow(int col, int row)
+    public void OnPointerEnter(PointerEventData eventData)
     {
-        column_ = col;
-        row_ = row;
-    }
-    public void GetBoxColAndRow(out int col, out int row)
-    {
-        col = column_;
-        row = row_;
+        // --- select a box -> status update --- //
+        if (!isHilighPermit_) { return; }
+        if (placedPieceScript_) { return; }
+        hilight_.SetActive(true);
     }
 
-    public void TurnPiece()
-    {
-        if (!placed_piece_script_) {
-            Debug.Log("hey");
-            return; 
-        }
-        placed_piece_script_.turnPiece();   // trun move
-        
+    public void OnPointerExit(PointerEventData eventData) {
+        hilight_.SetActive(false);
     }
 }

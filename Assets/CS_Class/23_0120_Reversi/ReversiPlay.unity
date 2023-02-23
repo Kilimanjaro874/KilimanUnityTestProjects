@@ -531,10 +531,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gridBox_: {fileID: 7985072733480477038, guid: 73ff56c3908387c458529985a08c78c4, type: 3}
-  playerPiceBox_: {fileID: 254824285}
-  enemyPiceBox_: {fileID: 1008434091}
-  playerPiceWaitPos_: {fileID: 1901318275}
-  enemyPiceWaitPos_: {fileID: 2095587342}
+  pieceStockerPlayer_: {fileID: 254824285}
+  pieceStockerEnemy_: {fileID: 1008434091}
+  playerPieceWaitPos_: {fileID: 1901318275}
+  enemyPieceWaitPos_: {fileID: 2095587342}
   playerTurn_: {fileID: 608566118}
   enemyTurn_: {fileID: 763552481}
 --- !u!4 &796613542
@@ -1243,6 +1243,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: PiceStocker2
       objectReference: {fileID: 0}
+    - target: {fileID: 8828172891285204636, guid: 552449b6de1ab33468ea17f6ad7d0563, type: 3}
+      propertyPath: piceObj_
+      value: 
+      objectReference: {fileID: 6749273177445486880, guid: 66313d44ccd719c48a4f034d7197499d, type: 3}
     - target: {fileID: 8828172891285204637, guid: 552449b6de1ab33468ea17f6ad7d0563, type: 3}
       propertyPath: m_RootOrder
       value: 7
@@ -1364,6 +1368,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: PiceStocker1
       objectReference: {fileID: 0}
+    - target: {fileID: 8828172891285204636, guid: 552449b6de1ab33468ea17f6ad7d0563, type: 3}
+      propertyPath: piceObj_
+      value: 
+      objectReference: {fileID: 6749273177445486880, guid: 66313d44ccd719c48a4f034d7197499d, type: 3}
     - target: {fileID: 8828172891285204637, guid: 552449b6de1ab33468ea17f6ad7d0563, type: 3}
       propertyPath: m_RootOrder
       value: 6
