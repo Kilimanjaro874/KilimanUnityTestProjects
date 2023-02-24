@@ -65,7 +65,7 @@ public class BoardManager : MonoBehaviour, IPointerClickHandler
         enemyTurn_.text = "";
 
         // ---- AI test ---- //
-        scoreAndDepth_ = new scoreAndDepth[200];
+        //scoreAndDepth_ = new scoreAndDepth[200];
     }
 
     private void FixedUpdate()
@@ -265,40 +265,86 @@ public class BoardManager : MonoBehaviour, IPointerClickHandler
 
     private struct scoreAndDepth
     {
-        int id;
-        int thinkDepth;
-        int score;
-        int currentCol;
-        int currentRow;
-        State[,] preState;
-        int[,] preCanGetNum;
-        State[,] nowState;
-        int[,] nowCanGetNum;
-        int row;
-        int col;
+        public int thinkDepth;
+        public int score;
+        public int currentCol;
+        public int currentRow;
+        public State state;
+        public State[,] preState;
+        public int[,] preCanGetNum;
+        public State[,] nowState;
+        public int[,] nowCanGetNum;
+        public int row;
+        public int col;
     }
     private scoreAndDepth[] scoreAndDepth_;
 
-    private void AIThinkColRow(out int col, out int row, State state, ref State[,] boardState, ref int[,] canGetNum)
-    {
-        for(var c = 0; c < col_; c++)
-        {
-            for(var r = 0; r < row_; r++)
-            {
-                if (canGetNum[c, r] <= 0) { continue; }
-                AIThinkColRow(c, r, state, 0);
-            }
-        }
+    //private void AIThinkColRow(out int col, out int row, State state, ref State[,] boardState, ref int[,] canGetNum)
+    //{
+    //    for(var c = 0; c < col_; c++)
+    //    {
+    //        for(var r = 0; r < row_; r++)
+    //        {
+    //            if (canGetNum[c, r] <= 0) { continue; }
 
-        // return result
-        col= 0; row = 0;
-    }
+    //            AIThinkColRow(c, r, state, 0, ref boardState, ref canGetNum, 0);
+    //        }
+    //    }
 
-    private void AIThinkColRow(int col, int row, State state, int count)
-    {
+    //    // return result
+    //    col= 0; row = 0;
+    //}
 
-    }
+    //private void AIThinkColRow(int col, int row, State state, int count, ref State[,] boardState, ref int[,] canGetNum, int depth)
+    //{
+    //    // get : current status.
+    //    scoreAndDepth_[count].thinkDepth = depth;
+    //    scoreAndDepth_[count].currentCol = col;
+    //    scoreAndDepth_[count].currentRow = row;
+    //    scoreAndDepth_[count].preState = boardState;
+    //    scoreAndDepth_[count].preCanGetNum= canGetNum;
+    //    // process:
 
+
+    //    // next 
+
+    //}
+
+    //private bool ThinkPieceCanBePlacedCheck(State state, ref State[,] boardState, ref int[,] canGetNum, ref scoreAndDepth sAD)
+    //{
+    //    // --- 1. init --- //
+    //    for(var c = 0; c < col_; c++)
+    //    {
+    //        for (var r = 0; r < row_; r++)
+    //        {
+    //            // -- init --- //
+    //            sAD.nowCanGetNum[c, r] = 0;
+    //        }
+    //    }
+
+    //    // 2. check :
+    //    for(var c = 0; c < col_; c++) {
+    //        for(var r = 0; r < row_; r++)
+    //        {
+
+    //        }
+    //    }
+
+
+    //    return false;
+    //}
+
+    //private int PlacedCheckAndGetNum(State state, int col, int row, int dirC, int dirR, int count, ref scoreAndDepth sAD)
+    //{
+    //    var cDirC = (dirC >= 0) ? dirC * (count + 1) : (int)(-1 * Mathf.Abs(dirC) * (count + 1));
+    //    var cDirR = (dirR >= 0) ? dirR * (count + 1) : (int)(-1 * Mathf.Abs(dirR) * (count + 1));
+    //    var tmpC = col + cDirC;
+    //    var tmpR = row + cDirR;
+    //    if (tmpC < 0 || tmpC >= col_ || tmpR < 0 || tmpR >= row_) { return 0; }
+    //    State cState = sAD.preState[tmpC, tmpR];
+    //    // 0. missing piece. : end.
+    //    if (count == 0 && cState == State.None) { return 0; }
+    //}
 
 
 
