@@ -25,8 +25,6 @@ public class BoardManager : MonoBehaviour, IPointerClickHandler
     private int[,] blackCanPlacePosAndNum_;
     private int[,] whiteCanPlacePosAndNumForGameOver_;
     private int[,] blackCanPlacePosAndNumForGameOver_;
-
-
     // --- Objects --- //
     [SerializeField] private GameObject gridBox_;
     [SerializeField] private PieceStocker pieceStockerPlayer_;
@@ -47,6 +45,10 @@ public class BoardManager : MonoBehaviour, IPointerClickHandler
     private TextMeshProUGUI playerTurn_;
     [SerializeField]
     private TextMeshProUGUI enemyTurn_;
+    // --- AI --- //
+    [SerializeField]
+    private int thinkDepth = 3;
+
     // -------------------------- //
 
     private void Start()
@@ -61,6 +63,9 @@ public class BoardManager : MonoBehaviour, IPointerClickHandler
         // ---- UI settings ---- //
         playerTurn_.text = "";
         enemyTurn_.text = "";
+
+        // ---- AI test ---- //
+        scoreAndDepth_ = new scoreAndDepth[200];
     }
 
     private void FixedUpdate()
@@ -257,6 +262,45 @@ public class BoardManager : MonoBehaviour, IPointerClickHandler
 
         return true;
     }
+
+    private struct scoreAndDepth
+    {
+        int id;
+        int thinkDepth;
+        int score;
+        int currentCol;
+        int currentRow;
+        State[,] preState;
+        int[,] preCanGetNum;
+        State[,] nowState;
+        int[,] nowCanGetNum;
+        int row;
+        int col;
+    }
+    private scoreAndDepth[] scoreAndDepth_;
+
+    private void AIThinkColRow(out int col, out int row, State state, ref State[,] boardState, ref int[,] canGetNum)
+    {
+        for(var c = 0; c < col_; c++)
+        {
+            for(var r = 0; r < row_; r++)
+            {
+                if (canGetNum[c, r] <= 0) { continue; }
+                AIThinkColRow(c, r, state, 0);
+            }
+        }
+
+        // return result
+        col= 0; row = 0;
+    }
+
+    private void AIThinkColRow(int col, int row, State state, int count)
+    {
+
+    }
+
+
+
 
 
     private bool GameOverCheck()
